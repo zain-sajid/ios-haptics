@@ -335,6 +335,10 @@ struct CustomPatternRow: View {
         .onAppear {
             prepareHaptics()
         }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            // Restart engine when app comes back to foreground
+            restartEngine()
+        }
     }
     
     @ViewBuilder
@@ -365,13 +369,45 @@ struct CustomPatternRow: View {
         do {
             hapticEngine = try CHHapticEngine()
             try hapticEngine?.start()
+            
+            // Handle engine stopping (e.g., when app goes to background)
+            hapticEngine?.stoppedHandler = { reason in
+                print("Haptic engine stopped: \(reason)")
+            }
+            
+            // Handle engine reset (e.g., after route change)
+            hapticEngine?.resetHandler = { [weak hapticEngine] in
+                print("Haptic engine reset")
+                do {
+                    try hapticEngine?.start()
+                } catch {
+                    print("Failed to restart engine: \(error)")
+                }
+            }
+            
         } catch {
             print("Error creating haptic engine: \(error.localizedDescription)")
         }
     }
     
+    func restartEngine() {
+        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return }
+        
+        do {
+            // Try to start the existing engine
+            try hapticEngine?.start()
+        } catch {
+            // If that fails, create a new engine
+            print("Failed to restart engine, creating new one: \(error)")
+            prepareHaptics()
+        }
+    }
+    
     func playRingingPattern() {
         guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return }
+        
+        // Ensure engine is running before playing
+        restartEngine()
         
         isPlaying = true
         
@@ -424,6 +460,9 @@ struct CustomPatternRow: View {
     
     func playMaxIntensityPattern() {
         guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return }
+        
+        // Ensure engine is running before playing
+        restartEngine()
         
         isPlaying = true
         
