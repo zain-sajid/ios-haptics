@@ -119,7 +119,7 @@ struct ContentView: View {
                     }
                 }
             }
-            .navigationTitle("Basic Haptics")
+            .navigationTitle("Haptics Demo")
             .listStyle(.insetGrouped)
         }
     }
